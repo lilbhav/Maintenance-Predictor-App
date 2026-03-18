@@ -1,53 +1,37 @@
-# AI Usage Notes (Interview Version)
+# AI Usage Notes
 
 I used GitHub Copilot to assist with implementation.
 
-## 1. Prompts I Used
+## 1. Main Prompts I Used
 
 These are the main prompts I used:
 
 1. Build a FastAPI backend with:
-- CSV ingestion endpoint
-- AI analysis endpoint
-- SQLite + SQLAlchemy setup
-- CORS for Vite frontend
+  - CSV ingestion endpoint
+  - AI analysis endpoint
+  - SQLite + SQLAlchemy setup
+  - CORS for Vite frontend
 
 2. Create database models for:
-- logs
-- analysis_results
+  - logs
+  - analysis_results
 
 3. Write a CSV ingestion service using pandas that is safe to run multiple times.
 
 4. Write a machine summary query (avg/max/min temp, vibration, status counts).
 
 5. Build an AI service that:
-- sends data to Claude
-- expects strict JSON output
-- retries up to 3 times
-- validates the AI response
+  - sends data to Claude
+  - expects strict JSON output
+  - retries up to 3 times
+  - validates the AI response
 
 6. Build React frontend pieces:
-- typed API client
-- dashboard page
-- trends/history page
-- logs table
-- health status card
-
-## 1.2 Debugging Prompts I Used (Most Useful)
-
-These are the prompts I used when behavior did not match requirements and I needed to diagnose quickly:
-
-1. "Given this FastAPI endpoint and SQLite setup, why would Windows throw `ImportError: DLL load failed while importing _sqlite3` and what is the safest fix?"
-
-2. "Write pytest tests for an AI JSON validator that enforces exactly 3 machines, strict risk enums, and contradiction checks."
-
-3. "Given this Claude response text, extract only the JSON payload safely, including cases where JSON is wrapped in markdown fences."
-
-4. "Design retry logic for LLM calls: retry on malformed JSON or schema violations up to 3 times, and persist an error record if all retries fail."
-
-5. "Review this TypeScript API type and React component props for mismatch bugs between nested and flat arrays."
-
-6. "For a paginated table with filters, what state reset rules prevent stale page bugs after filter changes?"
+  - typed API client
+  - dashboard page
+  - trends/history page
+  - logs table
+  - health status card
 
 
 ## 1.1 Prompt-to-File Mapping
@@ -55,61 +39,61 @@ These are the prompts I used when behavior did not match requirements and I need
 Below is the mapping between each prompt and the files it generated (or primarily produced).
 
 1. Build a FastAPI backend with CSV ingestion, AI analysis, SQLite + SQLAlchemy, and CORS
-- `backend/main.py`
-- `backend/database.py`
-- `backend/routers/logs.py`
-- `backend/routers/analysis.py`
-- `backend/requirements.txt`
+  - `backend/main.py`
+  - `backend/database.py`
+  - `backend/routers/logs.py`
+  - `backend/routers/analysis.py`
+  - `backend/requirements.txt`
 
 2. Create database models for logs and analysis_results
-- `backend/models.py`
+  - `backend/models.py`
 
 3. Write a CSV ingestion service using pandas that is safe to run multiple times
-- `backend/services/data_service.py`
-- wired through `backend/routers/logs.py`
+  - `backend/services/data_service.py`
+  - wired through `backend/routers/logs.py`
 
 4. Write a machine summary query (avg/max/min temp, vibration, status counts)
-- `backend/services/data_service.py` (aggregation logic)
+  - `backend/services/data_service.py` (aggregation logic)
 
 5. Build an AI service that sends data to Claude, enforces strict JSON, retries up to 3 times, and validates responses
-- `backend/services/ai_service.py`
-- integrated in `backend/routers/analysis.py`
+  - `backend/services/ai_service.py`
+  - integrated in `backend/routers/analysis.py`
 
 6. Build React frontend pieces (typed API client, dashboard page, trends/history page, logs table, health status card)
-- `frontend/src/api/client.ts`
-- `frontend/src/pages/Dashboard.tsx`
-- `frontend/src/pages/Trends.tsx`
-- `frontend/src/components/LogsTable.tsx`
-- `frontend/src/components/HealthStatusCard.tsx`
-- supporting shell/navigation: `frontend/src/App.tsx`, `frontend/src/components/Navbar.tsx`
+  - `frontend/src/api/client.ts`
+  - `frontend/src/pages/Dashboard.tsx`
+  - `frontend/src/pages/Trends.tsx`
+  - `frontend/src/components/LogsTable.tsx`
+  - `frontend/src/components/HealthStatusCard.tsx`
+  - supporting shell/navigation: `frontend/src/App.tsx`, `frontend/src/components/Navbar.tsx`
 
 ## 2. How I Verified the AI Output
 
 1. Ran the app end-to-end:
-- Ingest CSV
-- Load logs
-- Run AI analysis
-- Confirm response renders in the UI
+  - Ingest CSV
+  - Load logs
+  - Run AI analysis
+  - Confirm response renders in the UI
 
 2. Manually tested edge cases in the AI response validator:
-- wrong number of machines
-- invalid risk values
-- contradictory risk/reason combinations
+  - wrong number of machines
+  - invalid risk values
+  - contradictory risk/reason combinations
 
 3. Verified data shape consistency:
-- backend response vs frontend TypeScript types
+  - backend response vs frontend TypeScript types
 
 4. Verified retry behavior:
-- forced error paths and confirmed attempt counts and error handling
+  - forced error paths and confirmed attempt counts and error handling
 
 5. Verified persistence behavior:
-- successful analyses are stored with `status=success`
-- failed analyses (after retries) are stored with `status=error`
+  - successful analyses are stored with `status=success`
+  - failed analyses (after retries) are stored with `status=error`
 
 6. Verified assignment-specific constraints explicitly:
-- AI output is structured JSON with required keys
-- exactly 3 at-risk machines are returned
-- contradiction checks are enforced before saving
+  - AI output is structured JSON with required keys
+  - exactly 3 at-risk machines are returned
+  - contradiction checks are enforced before saving
 
 ## 3. What I Fixed Manually
 
@@ -126,8 +110,8 @@ Main fixes I made after AI generation:
 5. Added safe handling when analysis returns no data (error path).
 
 6. Improved UI behavior:
-- hide pagination when only one page
-- reset page to 1 when changing machine filter
+  - hide pagination when only one page
+  - reset page to 1 when changing machine filter
 
 ---
 
