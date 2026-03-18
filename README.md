@@ -14,9 +14,31 @@ A full-stack application that processes industrial sensor logs, stores them in S
 
 ---
 
-## Quick Start
+## Clone and Setup 
 
-### 1. Backend
+### Prerequisites
+
+- Git
+- Python 3.9+
+- Node.js 18+ (includes npm)
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/lilbhav/Maintenance-Predictor-App.git
+cd Maintenance-Predictor-App
+```
+
+### 2. Configure backend environment
+
+```bash
+cd backend
+copy .env.example .env
+```
+
+Then edit `.env` and set `ANTHROPIC_API_KEY`.
+
+### 3. Backend
 
 ```bash
 cd backend
@@ -27,24 +49,24 @@ python -m venv .venv
 # Windows (cmd)
 .venv\Scripts\activate.bat
 
-# Copy & fill in your API key
-copy .env.example .env
-# Edit .env → set ANTHROPIC_API_KEY=sk-ant-...
-
 # Install dependencies
 pip install -r requirements.txt
 
-# Start server  (add Anaconda Library/bin to PATH if on Anaconda Python)
+# Start server
 # Use the provided script which handles PATH automatically:
 start.bat
-# OR manually:
-uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 The API will be available at **http://localhost:8000**  
 Interactive docs at **http://localhost:8000/docs**
 
-### 2. Frontend
+If you see a Windows `_sqlite3` DLL error while running tests or starting backend manually:
+
+```powershell
+$env:PATH = "C:\Users\chavab\anaconda3\Library\bin;$env:PATH"
+```
+
+### 4. Frontend
 
 ```bash
 cd frontend
@@ -53,6 +75,14 @@ npm run dev        # or: start.bat
 ```
 
 The UI will be available at **http://localhost:5173**
+
+### 5. Optional: run tests
+
+```powershell
+cd backend
+$env:PATH = "C:\Users\chavab\anaconda3\Library\bin;$env:PATH"
+pytest test_validators.py test_integration.py test_api.py -v
+```
 
 ---
 
