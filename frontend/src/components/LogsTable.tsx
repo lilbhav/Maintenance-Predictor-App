@@ -1,5 +1,6 @@
 import type { LogEntry } from "../api/client";
 
+// Keep status chip colors aligned with the backend's log status values.
 const statusStyles: Record<string, string> = {
   OPERATIONAL: "bg-green-500/20 text-green-400 border border-green-500/30",
   WARNING: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
@@ -86,7 +87,7 @@ export default function LogsTable({
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Hide pagination controls when the dataset fits on one page. */}
       {pages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-2">
           <button

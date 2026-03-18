@@ -4,6 +4,7 @@ from database import Base
 
 
 class Log(Base):
+    # Raw machine telemetry ingested from the manufacturing CSV.
     __tablename__ = "logs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -15,6 +16,7 @@ class Log(Base):
 
 
 class AnalysisResult(Base):
+    # Persisted record of each AI analysis attempt and its final outcome.
     __tablename__ = "analysis_results"
 
     id = Column(Integer, primary_key=True, index=True)

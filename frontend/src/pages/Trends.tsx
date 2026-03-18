@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api, type AnalysisResult } from "../api/client";
 import HealthStatusCard from "../components/HealthStatusCard";
 
+// Reuse compact pills in the history list to preview the ranked machines.
 const riskPill: Record<string, string> = {
   high: "bg-red-500/20 text-red-400 border border-red-500/30",
   medium: "bg-orange-500/20 text-orange-400 border border-orange-500/30",
@@ -17,6 +18,7 @@ function AnalysisRow({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
+  // Each row can expand into the richer shared health-status card.
   const machines = result.top_machines?.top_3_at_risk ?? [];
 
   return (
@@ -83,12 +85,14 @@ function AnalysisRow({
 }
 
 export default function Trends() {
+  // History page state is intentionally simple: fetch once on mount and expand one row at a time.
   const [history, setHistory] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   useEffect(() => {
+    // Default to expanding the newest result so the user sees detail immediately.
     api
       .getHistory()
       .then((r) => {

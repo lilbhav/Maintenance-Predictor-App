@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/logs", tags=["logs"])
 def ingest_logs(db: Session = Depends(get_db)):
     """Load the CSV file into the database. Safe to call multiple times (idempotent)."""
     try:
+        # Delegate CSV parsing and table refresh to the data service layer.
         result = ingest_csv(db)
         return {"success": True, **result}
     except FileNotFoundError as exc:
@@ -29,6 +30,7 @@ def get_logs(
     db: Session = Depends(get_db),
 ):
     """Return paginated logs, optionally filtered by machine_id."""
+    # Sort oldest-to-newest so pagination is deterministic across requests.
     query = db.query(Log).order_by(asc(Log.timestamp))
 
     if machine_id:
@@ -60,5 +62,7 @@ def get_logs(
 def get_machine_ids(db: Session = Depends(get_db)):
     """Return the list of unique machine IDs present in the logs."""
     from sqlalchemy import distinct
+
+    # This powers the machine filter dropdown in the dashboard.
     ids = db.query(distinct(Log.machine_id)).order_by(Log.machine_id).all()
     return {"machine_ids": [r[0] for r in ids]}

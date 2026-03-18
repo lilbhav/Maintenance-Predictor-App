@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 
 export default function Navbar() {
+  // Let NavLink drive the active styling so routes stay the single source of truth.
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `px-4 py-2 rounded-lg font-medium transition-colors ${
       isActive

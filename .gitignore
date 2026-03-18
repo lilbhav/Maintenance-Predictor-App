@@ -36,3 +36,6 @@ frontend/.vite/
 *.log
 *.tmp
 *.temp
+
+# Local prep notes
+prep.md

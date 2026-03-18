@@ -9,7 +9,7 @@ A full-stack application that processes industrial sensor logs, stores them in S
 | Layer | Technology |
 |---|---|
 | Backend | Python · FastAPI · SQLAlchemy · SQLite |
-| AI Engine | Anthropic Claude (`claude-3-5-sonnet-20241022`) |
+| AI Engine | Anthropic Claude (`claude-sonnet-4-6` default, configurable via `ANTHROPIC_MODEL` and optional `ANTHROPIC_MODELS`) |
 | Frontend | React 18 · Vite · Tailwind CSS · TypeScript |
 
 ---
@@ -114,6 +114,8 @@ The AI service validates every Claude response before saving:
 
 ```
 Maintenance-Predictor-App/
+├── README.md
+├── README_AI.md
 ├── data/
 │   └── manufacturing_floor_logs_1000.csv
 ├── backend/
@@ -122,14 +124,18 @@ Maintenance-Predictor-App/
 │   ├── models.py                # Log + AnalysisResult ORM models
 │   ├── routers/
 │   │   ├── logs.py              # /api/logs endpoints
-│   │   └── analysis.py         # /api/analysis endpoints
+│   │   └── analysis.py          # /api/analysis endpoints
 │   ├── services/
 │   │   ├── data_service.py      # CSV ingestion + per-machine aggregation
 │   │   └── ai_service.py        # Claude client + validation + retry logic
+│   ├── test_api.py              # API and endpoint behavior tests
+│   ├── test_validators.py       # AI response validation unit tests
+│   ├── test_integration.py      # Retry/error handling integration tests
 │   ├── requirements.txt
 │   ├── .env.example
 │   └── start.bat                # Windows convenience launcher
 └── frontend/
+    ├── index.html
     ├── src/
     │   ├── api/client.ts        # Typed API wrappers
     │   ├── pages/
@@ -139,7 +145,8 @@ Maintenance-Predictor-App/
     │       ├── Navbar.tsx
     │       ├── LogsTable.tsx
     │       └── HealthStatusCard.tsx
+    ├── vite.config.ts
+    ├── tailwind.config.js
     ├── package.json
     └── start.bat
 ```
-Application to process and analyze sensor logs

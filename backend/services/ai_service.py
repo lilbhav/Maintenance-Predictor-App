@@ -12,13 +12,42 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
-MODEL = "claude-3-5-sonnet-20241022"
 
-SYSTEM_PROMPT = """You are an industrial IoT predictive maintenance expert.
+# Try explicit configuration first, then fall back to known model IDs.
+DEFAULT_MODEL_CANDIDATES = [
+    "claude-sonnet-4-6",
+    "claude-3-7-sonnet-latest",
+    "claude-3-5-sonnet-20241022",
+    "claude-3-5-sonnet-latest",
+]
+
+
+def _unique_keep_order(values: list[str]) -> list[str]:
+    # Preserve the first occurrence of each non-empty model name.
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        normalized = value.strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(normalized)
+    return result
+
+
+def _get_candidate_models() -> list[str]:
+    # Support either one preferred model or a comma-separated fallback list from .env.
+    explicit_model = os.getenv("ANTHROPIC_MODEL", "").strip()
+    extra_models_raw = os.getenv("ANTHROPIC_MODELS", "")
+    extra_models = [m.strip() for m in extra_models_raw.split(",") if m.strip()]
+
+    return _unique_keep_order([explicit_model, *extra_models, *DEFAULT_MODEL_CANDIDATES])
+
+SYSTEM_PROMPT = """
 You will be given aggregated sensor statistics for a set of machines on a manufacturing floor.
 Your job is to identify the TOP 3 machines most at risk of failure.
 
-You MUST respond with ONLY valid JSON — no prose, no markdown fences, no explanations outside the JSON object.
+You MUST respond with ONLY valid JSON, no prose, no markdown fences, no explanations outside the JSON object.
 
 The response schema is:
 {
@@ -41,6 +70,7 @@ Rules:
 
 
 def _build_user_message(machine_summary: list[dict], extra_context: str = "") -> str:
+    # Keep the prompt payload machine-readable so retries can tighten the request.
     summary_json = json.dumps(machine_summary, indent=2)
     msg = f"Analyze the following machine summary data and return the top 3 at-risk machines:\n\n{summary_json}"
     if extra_context:
@@ -95,6 +125,7 @@ def _validate_response(data: Any) -> list[str]:
             if required_field not in item:
                 errors.append(f"{prefix}: missing required field '{required_field}'.")
 
+        # Validate the schema first, then check for simple domain contradictions.
         risk = item.get("risk_level", "")
         if risk not in VALID_RISK_LEVELS:
             errors.append(
@@ -133,7 +164,7 @@ def _extract_json(text: str) -> Any:
     """Try to parse JSON from an LLM response that may have surrounding text."""
     text = text.strip()
 
-    # Strip markdown fences if present
+    # Strip common markdown wrappers before attempting JSON parsing.
     text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"```\s*$", "", text, flags=re.IGNORECASE)
     text = text.strip()
@@ -141,7 +172,7 @@ def _extract_json(text: str) -> Any:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # Try to extract first {...} JSON object from the text
+        # Some model responses include extra prose; salvage the first JSON object if possible.
         match = re.search(r"\{.*\}", text, re.DOTALL)
         if match:
             return json.loads(match.group())
@@ -177,36 +208,62 @@ def run_analysis(machine_summary: list[dict]) -> dict:
 
     client = anthropic.Anthropic(api_key=api_key)
 
+    # Rotate through configured model IDs when the primary one is unavailable.
+    candidate_models = _get_candidate_models()
+    if not candidate_models:
+        return {
+            "status": "error",
+            "data": None,
+            "raw_prompt": "",
+            "attempt_count": 0,
+            "error_message": "No Anthropic model candidates available. Set ANTHROPIC_MODEL in backend/.env.",
+        }
+
     extra_context = ""
     last_prompt = ""
+    model_index = 0
+    active_model = candidate_models[model_index]
+    models_tried: list[str] = []
 
-    for attempt in range(1, MAX_RETRIES + 1):
+    attempt = 1
+    while attempt <= MAX_RETRIES:
+        # Feed back parse and validation failures so the next attempt can self-correct.
         user_message = _build_user_message(machine_summary, extra_context)
         last_prompt = user_message
 
         try:
-            logger.info("Calling Claude (attempt %d/%d)…", attempt, MAX_RETRIES)
+            logger.info(
+                "Calling Claude (attempt %d/%d) with model '%s'…",
+                attempt,
+                MAX_RETRIES,
+                active_model,
+            )
             response = client.messages.create(
-                model=MODEL,
+                model=active_model,
                 max_tokens=1024,
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_message}],
             )
+            models_tried.append(active_model)
             raw_text = response.content[0].text
 
             try:
                 parsed = _extract_json(raw_text)
             except (json.JSONDecodeError, ValueError) as exc:
+                # Retry with the parse failure attached to the next prompt.
                 extra_context = f"Your response was not valid JSON: {exc}\nRaw response was:\n{raw_text[:500]}"
                 logger.warning("Attempt %d — JSON parse error: %s", attempt, exc)
+                attempt += 1
                 continue
 
             validation_errors = _validate_response(parsed)
             if validation_errors:
+                # Retry when the JSON is structurally valid but fails domain rules.
                 extra_context = "Validation errors found:\n" + "\n".join(
                     f"  - {e}" for e in validation_errors
                 )
                 logger.warning("Attempt %d — Validation errors: %s", attempt, validation_errors)
+                attempt += 1
                 continue
 
             logger.info("Attempt %d — Success.", attempt)
@@ -219,13 +276,34 @@ def run_analysis(machine_summary: list[dict]) -> dict:
             }
 
         except anthropic.APIError as exc:
+            models_tried.append(active_model)
+            error_text = str(exc)
+            if "not_found_error" in error_text and model_index + 1 < len(candidate_models):
+                model_index += 1
+                active_model = candidate_models[model_index]
+                extra_context = (
+                    f"Model unavailable: {error_text}. "
+                    f"Retrying with fallback model '{active_model}'."
+                )
+                logger.warning(
+                    "Model not found. Switching to fallback model '%s'.", active_model
+                )
+                # Keep the same attempt count when only switching model IDs.
+                continue
+
             error_msg = f"Anthropic API error on attempt {attempt}: {exc}"
             logger.error(error_msg)
             extra_context = error_msg
+            attempt += 1
             continue
 
     # All retries exhausted
-    final_error = f"Analysis failed after {MAX_RETRIES} attempts. Last error: {extra_context}"
+    tried_models_str = ", ".join(_unique_keep_order(models_tried)) if models_tried else "none"
+    final_error = (
+        f"Analysis failed after {MAX_RETRIES} attempts. Last error: {extra_context}. "
+        f"Models tried: {tried_models_str}. "
+        "Set ANTHROPIC_MODEL (or ANTHROPIC_MODELS) in backend/.env to a model your account can access."
+    )
     logger.error(final_error)
     return {
         "status": "error",

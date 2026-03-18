@@ -1,5 +1,6 @@
 import type { AtRiskMachine } from "../api/client";
 
+// Map each risk level to a consistent visual treatment across the UI.
 const riskColors: Record<string, { badge: string; border: string; glow: string }> = {
   high: {
     badge: "bg-red-500/20 text-red-400 border border-red-500/40",
@@ -19,6 +20,7 @@ const riskColors: Record<string, { badge: string; border: string; glow: string }
 };
 
 function RiskBadge({ level }: { level: string }) {
+  // Unknown values fall back to the lowest-risk styling instead of crashing the UI.
   const color = riskColors[level] ?? riskColors.low;
   return (
     <span className={`text-xs font-bold uppercase tracking-widest px-2 py-1 rounded-full ${color.badge}`}>
@@ -28,6 +30,7 @@ function RiskBadge({ level }: { level: string }) {
 }
 
 function MachineCard({ machine, rank }: { machine: AtRiskMachine; rank: number }) {
+  // Reuse the same palette for the card frame and the risk badge.
   const color = riskColors[machine.risk_level] ?? riskColors.low;
 
   return (
@@ -87,6 +90,7 @@ export default function HealthStatusCard({ machines, createdAt, attemptCount }: 
       <p className="text-sm text-gray-400">
         Top 3 machines identified as at-risk by AI analysis of sensor patterns:
       </p>
+      {/* The backend guarantees three items on success, but this still renders safely for fewer. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {machines.map((m, i) => (
           <MachineCard key={m.machine_id} machine={m} rank={i + 1} />

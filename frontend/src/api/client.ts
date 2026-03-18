@@ -1,6 +1,7 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  // Centralize fetch defaults and API error handling in one place.
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
@@ -12,7 +13,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// ---- types ----------------------------------------------------------------
+// Shared response types used across the dashboard and trends pages.
 
 export interface LogEntry {
   id: number;
@@ -52,7 +53,7 @@ export interface AnalysisHistory {
   results: AnalysisResult[];
 }
 
-// ---- api calls ------------------------------------------------------------
+// Typed wrappers around the backend endpoints.
 
 export const api = {
   ingestCsv: () =>

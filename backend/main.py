@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+# Load environment variables before importing modules that read configuration.
 load_dotenv()
 
 from database import engine, Base
@@ -17,7 +18,7 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create all tables on startup
+    # Ensure the local database schema exists before the API starts serving traffic.
     Base.metadata.create_all(bind=engine)
     yield
 
@@ -42,4 +43,5 @@ app.include_router(analysis.router)
 
 @app.get("/")
 def health():
+    # Lightweight health endpoint used by tests and local startup checks.
     return {"status": "ok", "service": "IoT Maintenance Insight Dashboard"}

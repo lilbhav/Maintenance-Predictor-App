@@ -6,15 +6,18 @@ import HealthStatusCard from "../components/HealthStatusCard";
 const PAGE_SIZE = 50;
 
 export default function Dashboard() {
+  // Log table state.
   const [logsData, setLogsData] = useState<LogsResponse | null>(null);
   const [page, setPage] = useState(1);
   const [machineFilter, setMachineFilter] = useState("");
   const [machineIds, setMachineIds] = useState<string[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
+  // CSV ingestion state.
   const [ingestLoading, setIngestLoading] = useState(false);
   const [ingestMsg, setIngestMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // AI analysis state.
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -31,6 +34,7 @@ export default function Dashboard() {
     async (p: number, filter: string) => {
       setLogsLoading(true);
       try {
+        // Keep pagination and filtering logic in one place for reuse after ingestion.
         const data = await api.getLogs(p, PAGE_SIZE, filter || undefined);
         setLogsData(data);
       } catch {
@@ -54,7 +58,7 @@ export default function Dashboard() {
       setIngestMsg({ type: "success", text: `✓ Ingested ${res.ingested} records from ${res.file}` });
       setPage(1);
       fetchLogs(1, machineFilter);
-      // Refresh machine ids
+      // Refresh the filter options in case the ingested file changed the machine set.
       const ids = await api.getMachineIds();
       setMachineIds(ids.machine_ids);
     } catch (err: unknown) {
@@ -70,6 +74,7 @@ export default function Dashboard() {
     setAnalysisResult(null);
     setAnalysisError(null);
     try {
+      // Clear stale results before showing a fresh analysis response.
       const res = await api.runAnalysis();
       if (res.status === "error") {
         setAnalysisError(res.error_message ?? "Analysis failed");
@@ -91,7 +96,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/* Page heading and primary actions. */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">Dashboard</h1>
@@ -129,7 +134,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Ingest message */}
+      {/* Show the latest ingest outcome directly above the data table. */}
       {ingestMsg && (
         <div
           className={`px-4 py-3 rounded-lg text-sm font-medium ${
@@ -142,7 +147,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* AI Analysis result */}
+      {/* Surface AI failures separately from successful result cards. */}
       {analysisError && (
         <div className="px-4 py-3 rounded-lg text-sm bg-red-500/10 text-red-400 border border-red-500/30">
           <strong>Analysis Error:</strong> {analysisError}
@@ -157,7 +162,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Logs section */}
+      {/* Filter and paginated log table. */}
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h2 className="text-xl font-bold text-white">Sensor Logs</h2>

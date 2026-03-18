@@ -16,6 +16,7 @@ def run_analysis_endpoint(db: Session = Depends(get_db)):
     Aggregate log data, send to AI, validate response with retries,
     persist the result, and return it.
     """
+    # Build the compact per-machine summary that is sent to the AI model.
     summary = get_machine_summary(db)
     if not summary:
         raise HTTPException(
@@ -23,8 +24,10 @@ def run_analysis_endpoint(db: Session = Depends(get_db)):
             detail="No log data found. Please ingest the CSV first via POST /api/logs/ingest.",
         )
 
+    # The AI service handles retries, validation, and fallback model selection.
     result = run_analysis(summary)
 
+    # Store both successful and failed analysis attempts for the history view.
     record = AnalysisResult(
         top_machines=json.dumps(result["data"]) if result["data"] else None,
         raw_prompt=result.get("raw_prompt", ""),
@@ -69,6 +72,7 @@ def _serialize(record: AnalysisResult) -> dict:
     top = None
     if record.top_machines:
         try:
+            # Deserialize the stored JSON string back into structured data for the frontend.
             top = json.loads(record.top_machines)
         except json.JSONDecodeError:
             top = None
